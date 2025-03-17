@@ -137,6 +137,29 @@ def visualize_spending(df, analysis_results):
     plt.tight_layout()
     plt.savefig('finance_charts/category_spending_pie.png')
 
+    # 3. Top 10 merchants by spending
+    plt.figure(figsize=(12, 6))
+    top_merchants = analysis_results['merchant_spending'].head(10).abs().sort_values(ascending=True)
+    plt.barh(top_merchants.index, top_merchants)
+    plt.title('Top 10 Merchants by Spending')
+    plt.xlabel('Amount Spent')
+    plt.tight_layout()
+    plt.savefig('finance_charts/top_merchants.png')
+
+    # 4. Daily spending pattern
+    plt.figure(figsize=(12, 6))
+    df['day_of_week'] = df['entry_date_time'].dt.day_name()
+    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    daily_spending = df[df['amount'] < 0].groupby('day_of_week')['amount'].sum().abs()
+    daily_spending = daily_spending.reindex(day_order)
+    plt.bar(daily_spending.index, daily_spending)
+    plt.title('Spending by Day of Week')
+    plt.ylabel('Amount Spent')
+    plt.tight_layout()
+    plt.savefig('finance_charts/daily_spending.png')
+
+    print("Charts saved to the 'finance_charts' directory.")
+
 
 def read_spending():
     transactions_df = load_transactions(TRANSACTIONS_FILE)
