@@ -1,0 +1,88 @@
+{
+  "tags": [
+    "cashout",
+    "online-shopping",
+    "big-spending",
+    "medium-spending",
+    "minor-spending",
+    "money-added",
+    "vice"
+  ],
+  "categories": [
+    {
+      "category": "Housing & Utilities",
+      "description": "Rent, mortgage, electricity, water, gas, internet, home maintenance.",
+      "id": 1
+    },
+    {
+      "category": "Food & Dining",
+      "description": "Groceries, restaurants, meal subscriptions, takeout (excluding coffee/tea).",
+      "id": 2
+    },
+    {
+      "category": "Coffee & Tea",
+      "description": "Coffee shops, tea houses, packaged coffee/tea, brewing equipment, specialty drinks.",
+      "id": 3
+    },
+    {
+      "category": "Transportation",
+      "description": "Gas, public transit, car payments, insurance, maintenance, ride-sharing (Uber, Lyft), parking.",
+      "id": 4
+    },
+    {
+      "category": "Health & Wellness",
+      "description": "Medical bills, insurance premiums, prescriptions, gym memberships, therapy, supplements.",
+      "id": 5
+    },
+    {
+      "category": "Entertainment & Leisure",
+      "description": "Streaming services (Netflix, Spotify, etc.), movies, concerts, hobbies, books, video games.",
+      "id": 6
+    },
+    {
+      "category": "Shopping & Personal Care",
+      "description": "Clothing, cosmetics, haircuts, household items, electronics.",
+      "id": 7
+    },
+    {
+      "category": "Debt, Savings & Investments",
+      "description": "Loan payments, credit card payments, retirement contributions, emergency fund, investments.",
+      "id": 8
+    },
+    {
+      "category": "Nightlife",
+      "description": "Bars, clubs, drinks, cover charges, late-night eats, nightlife-specific events.",
+      "id": 9
+    },
+    {
+      "category": "Government & Taxes",
+      "description": "Income taxes, property taxes, vehicle registration, tolls, fines, permits, passport fees.",
+      "id": 10
+    },
+    {
+      "category": "Transfers & Internal Transactions",
+      "description": "Moving money between personal accounts (e.g., checking to savings, Venmo/Cash App, crypto).",
+      "id": 11
+    },
+    {
+      "category": "ATM Withdrawals",
+      "description": "Cash withdrawals from ATMs, ATM fees.",
+      "id": 12
+    },
+    {
+      "category": "Tobacco & Smoking Products",
+      "description": "Cigarettes, pipe tobacco, cigars, snus, IQOS, vapes, e-liquids, rolling papers, lighters.",
+      "id": 13
+    },
+    {
+      "category": "Miscellaneous & Gifts",
+      "description": "Charity donations, gifts, pet expenses, one-time purchases, unexpected costs.",
+      "id": 14
+    },
+    {
+      "category": "N/A",
+      "description": "N/A",
+      "id": 15
+    }
+  ]
+}
