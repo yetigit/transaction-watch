@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 import numpy as np
+from collections import Counter
 
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
@@ -21,8 +22,6 @@ fetched_tags = []
 fetched_cat = {}
 cat_desc = {}
 
-# TODO:
-# [] spending by tags
 
 def fetch_tags_and_categories():
     data = None
@@ -344,6 +343,42 @@ def detect_monthly_subscriptions(df):
 
     return likely_sub
 
+
+def tag_analysis(df):
+    # these tags were not reliably assigned by GPT
+    ignore_tags = ["medium-spending", "minor-spending", "big-spending"]
+
+    expenses = df[df["amount"] < 0].copy()
+    all_tags = []
+    tag_counter = Counter()
+    tag_totals = Counter()
+
+    for _, row in expenses.iterrows():
+        amount = abs(row["amount"])
+        if not row["tags"]:
+            continue
+        for tag in row["tags"]:
+            if tag not in ignore_tags:
+                tag_counter[tag] += 1
+                tag_totals[tag] += amount
+                all_tags.append(tag)
+
+    tag_df = pd.DataFrame({
+        "tag": list(tag_totals.keys()),
+        "count": [tag_counter[tag] for tag in tag_totals.keys()],
+        "total_amount": [tag_totals[tag] for tag in tag_totals.keys()],
+    })
+    if tag_df.empty:
+        print("No valid tags found after applying filters.")
+        return None
+
+    tag_df = tag_df.sort_values("total_amount", ascending=False)
+    print("\n--- Top tags by total spending ---")
+    for _, row in tag_df.head(10).iterrows():
+        print(f"{row['tag']}: {row['total_amount']:.2f} ({row['count']} transactions)")
+    return tag_df
+
+
 def advanced_analysis(df):
     subs = detect_monthly_subscriptions(df)
 
@@ -393,4 +428,5 @@ if __name__ == "__main__":
     fetch_tags_and_categories()
     df, basic_stats = read_spending()
     stats2 = advanced_analysis(df)
+    stats3 = tag_analysis(df)
     visualize_spending(df, basic_stats, stats2)
