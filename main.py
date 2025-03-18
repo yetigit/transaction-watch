@@ -15,6 +15,8 @@ fetched_tags = []
 fetched_cat = {}
 cat_desc = {}
 
+# TODO:
+# [] spending by tags
 
 def fetch_tags_and_categories():
     data = None
@@ -169,9 +171,113 @@ def read_spending():
     basic_stats = analyze_transactions(transactions_df)
     return (transactions_df, basic_stats)
 
+def detect_monthly_subscriptions(df):
+    print("\n--- Monthly subscriptions and recurring payments detection ---")
+    
+    # Only look at debits (expenses)
+    debits_df = df[df['amount'] < 0]
+    
+    # Find merchants with at least 3 transactions
+    recurring = debits_df.groupby('merchant_name').filter(lambda x: len(x) >= 3)
+    potential_merchants = recurring['merchant_name'].value_counts().index.tolist()
+    
+    likely_sub = []
+    consistent = [] 
+    for merchant in potential_merchants:
+        merchant_data = debits_df[debits_df['merchant_name'] == merchant].sort_values('entry_date_time')
+        
+        # Check if the transaction amounts are similar
+        amounts = merchant_data['amount'].tolist()
+        amount_std = pd.Series(amounts).std()
+        amount_mean = pd.Series(amounts).mean()
+        
+        # Check for similar amounts (10% variation threshold)
+        if abs(amount_std / amount_mean) < 0.1:
+            # Extract days of month to check for pattern
+            days_of_month = merchant_data['entry_date_time'].dt.day
+            day_std = days_of_month.std()
+            
+            # Check if transactions occur in different months
+            months = merchant_data['entry_date_time'].dt.to_period('M').nunique()
+            
+            # Calculate date span in months
+            date_span = (merchant_data['entry_date_time'].max() - 
+                         merchant_data['entry_date_time'].min()).days / 30.5
+            
+            # It's likely a monthly subscription if:
+            # 1. Similar day of month (std < 5 days to account for weekends/holidays)
+            # 2. Spans at least 2 months
+            # 3. Has at least 3 occurrences
+            if day_std < 3 and months >= 2:
+                likely_sub.append({
+                    "merchant": merchant,
+                    "amount": round(abs(amount_mean),2),
+                    "frequency": len(merchant_data),
+                    "day": int(days_of_month.median()),
+                })
+            else:
+                consistent.append({
+                    "merchant": merchant,
+                    "amount": round(abs(amount_mean), 2),
+                    "frequency": len(merchant_data),
+                    "day": int(days_of_month.median()),
+                })
+
+    print("\n--- Monthly Subscriptions ---")
+    for data in likely_sub:
+        print(json.dumps(data))
+
+    print("\n--- Recurring ---")
+    for data in consistent:
+        print(json.dumps(data))
+
+    return (likely_sub, consistent)
+
+def advanced_analysis(df):
+    subs, recur = detect_monthly_subscriptions(df)
+
+    # 2. Unusual spending detection
+    print("\n--- Unusual Spending Patterns ---")
+    # Calculate Z-scores for transaction amounts
+    df['amount_zscore'] = (df['amount'] - df['amount'].mean()) / df['amount'].std()
+    
+    # Transactions more than 2 standard deviations from the mean
+    unusual = df[abs(df['amount_zscore']) > 2].sort_values('amount', ascending=False)
+    
+    if not unusual.empty:
+        print("Unusually large transactions:")
+        for _, row in unusual.iterrows():
+            print(f"Date: {row['entry_date_time'].date()}, "
+                  f"Merchant: {row['merchant_name']}, "
+                  f"Amount: {row['amount']:.2f}, "
+                  f"Category: {row['category']}")
+
+
+    # 3. Monthly spending trends
+    print("\n--- Monthly Spending Trends ---")
+    monthly = df.copy()
+    monthly['month'] = monthly['entry_date_time'].dt.to_period('M')
+    
+    # Calculate month-over-month change
+    monthly_pivot = pd.pivot_table(
+        monthly[monthly['amount'] < 0],
+        values='amount',
+        index='month',
+        aggfunc='sum'
+    ).sort_index()
+    
+    monthly_pivot['amount_abs'] = monthly_pivot['amount'].abs()
+    monthly_pivot['pct_change'] = monthly_pivot['amount_abs'].pct_change() * 100
+    
+    print("Month-over-month spending change:")
+    for month, row in monthly_pivot.iterrows():
+        if pd.notna(row['pct_change']):
+            direction = "increase" if row['pct_change'] > 0 else "decrease"
+            print(f"{month}: {abs(row['amount_abs']):.2f} ({row['pct_change']:.1f}% {direction} from previous month)")
 
 if __name__ == "__main__":
     print("Currency: SEK")
     fetch_tags_and_categories()
     df, basic_stats = read_spending()
-    visualize_spending(df, basic_stats)
+    advanced_analysis(df)
+    # visualize_spending(df, basic_stats)
