@@ -1,7 +1,13 @@
 import json
 import pandas as pd
+import numpy as np
+
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+from matplotlib import cm
+import squarify
 import seaborn as sns
+
 from datetime import datetime
 import os
 
@@ -116,6 +122,99 @@ def analyze_transactions(df):
     }
 
 
+def visualize_top_merchant_per_category(df):
+    plt.style.use('seaborn-v0_8-whitegrid')
+    
+    expenses = df[df['amount'] < 0].copy()
+    
+    categories = expenses['category'].unique()
+    
+    # Create subplots (one per category)
+    n_categories = len(categories)
+    _, axes = plt.subplots(n_categories, 1, figsize=(12, 5 * n_categories))
+    
+    for i, category in enumerate(categories):
+        # Filter for this category
+        cat_data = expenses[expenses['category'] == category]
+        
+        merchant_totals = abs(cat_data.groupby('merchant_name')['amount'].sum())
+        
+        top_merchants = merchant_totals.nlargest(10)
+        
+        top_merchants = top_merchants.sort_values(ascending=True)
+        
+        # Create horizontal bar chart
+        bars = axes[i].barh(top_merchants.index, top_merchants.values, color='#2077B4')
+        
+        # Add amount labels to the right of each bar
+        for bar in bars:
+            width = bar.get_width()
+            axes[i].text(width + (width * 0.02), 
+                       bar.get_y() + bar.get_height()/2, 
+                       f'{width:.2f}', 
+                       va='center')
+        
+        axes[i].set_title(f'Top Merchants in {category}', fontsize=14)
+        axes[i].set_xlabel('Total Spent')
+        
+        # Add percentage of category total
+        category_total = abs(cat_data['amount'].sum())
+        for j, (merchant, amount) in enumerate(top_merchants.items()):
+            percentage = (amount / category_total) * 100
+            axes[i].text(amount / 2, j, f'{percentage:.1f}%', 
+                       ha='center', va='center', color='white', fontweight='bold')
+    
+    plt.tight_layout()
+    plt.savefig('finance_charts/top_merchants_by_category.png')
+
+def visualize_merchant_spending_treemap(df):
+    expenses = df[df["amount"] < 0].copy()
+
+    # Group by category and merchant, then sum the amounts
+    category_merchant = (
+        expenses.groupby(["category", "merchant_name"])["amount"]
+        .sum()
+        .abs()
+        .reset_index()
+    )
+
+    category_merchant = category_merchant.sort_values("amount", ascending=False)
+
+    # Take top 30 merchant-category
+    top_combos = category_merchant.head(30)
+
+    labels = [
+        f"{mer}\n{amt:.0f}"
+        for cat, mer, amt in zip(
+            top_combos["category"], top_combos["merchant_name"], top_combos["amount"]
+        )
+    ]
+
+    categories = top_combos["category"].unique()
+    colors = cm.tab10(np.linspace(0, 1, len(categories)))
+    category_colors = dict(zip(categories, colors))
+
+    combo_colors = [category_colors[cat] for cat in top_combos["category"]]
+
+    # Create figure
+    plt.figure(figsize=(18, 12))
+
+    # Create treemap
+    squarify.plot(
+        sizes=top_combos["amount"],
+        label=labels,
+        color=combo_colors,
+        alpha=0.8,
+        pad=True,
+    )
+
+    plt.axis("off")
+    plt.title("Spending by Category and Merchant (Top 30)", fontsize=16)
+
+    plt.tight_layout()
+    plt.savefig("finance_charts/merchant_spending_treemap.png")
+
+
 def visualize_spending(df, analysis_results, analysis_results_2):
     if not os.path.exists('finance_charts'):
         os.makedirs('finance_charts')
@@ -181,6 +280,12 @@ def visualize_spending(df, analysis_results, analysis_results_2):
     plt.xlabel('Monthly Amount')
     plt.tight_layout()
     plt.savefig('finance_charts/monthly_subscriptions.png')
+
+    # 6. Merchants per category
+    visualize_top_merchant_per_category(df)
+
+    # 7. 1st Merchant per category
+    visualize_merchant_spending_treemap(df)
 
     print("Charts saved to the 'finance_charts' directory.")
 
