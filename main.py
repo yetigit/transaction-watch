@@ -166,6 +166,7 @@ def visualize_top_merchant_per_category(df):
     plt.tight_layout()
     plt.savefig('finance_charts/top_merchants_by_category.png')
 
+
 def visualize_merchant_spending_treemap(df):
     expenses = df[df["amount"] < 0].copy()
 
@@ -214,77 +215,143 @@ def visualize_merchant_spending_treemap(df):
     plt.savefig("finance_charts/merchant_spending_treemap.png")
 
 
-def visualize_spending(df, analysis_results, analysis_results_2):
-    if not os.path.exists('finance_charts'):
-        os.makedirs('finance_charts')
+def visualize_tags(df, tag_df):
+    expenses = df[df["amount"] < 0].copy()
+    expenses['month'] = expenses['entry_date_time'].dt.to_period('M')
+    
+    # Get top 5 tags by spending (or fewer if less than 5 available)
+    top5_tags = tag_df.head(min(5, len(tag_df)))['tag'].tolist()
+    monthly_tag_data = []
+
+    for month, month_data in expenses.groupby('month'):
+        month_totals = {tag: 0.0 for tag in top5_tags}
+        for _, row in month_data.iterrows():
+            if not row['tags']:
+                continue
+                
+            # For each tag in this transaction
+            for tag in row['tags']:
+                if tag in top5_tags:
+                    month_totals[tag] += abs(row['amount'])
+
+        for tag, amount in month_totals.items():
+            monthly_tag_data.append({
+                'month': month,
+                'tag': tag,
+                'amount': amount
+            })
+
+    monthly_tag_df = pd.DataFrame(monthly_tag_data)
+
+    if not monthly_tag_df.empty:
+        # Create line chart for tag trends
+        plt.figure(figsize=(14, 7))
+        
+        # Plot each tag as a separate line
+        for tag in top5_tags:
+            tag_data = monthly_tag_df[monthly_tag_df['tag'] == tag]
+            if not tag_data.empty:
+                plt.plot(tag_data['month'].astype(str), tag_data['amount'], 
+                        marker='o', linewidth=2, label=tag)
+        
+        plt.title('Monthly Spending Trends by Top Tags', fontsize=14)
+        plt.xlabel('Month')
+        plt.ylabel('Amount ')
+        plt.legend()
+        plt.grid(True, linestyle='--', alpha=0.7)
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.savefig('finance_charts/tag_spending_trends.png')
+
+
+def visualize_spending(df, analysis_results, analysis_results_2, tag_df):
+    if not os.path.exists("finance_charts"):
+        os.makedirs("finance_charts")
     # Set the style for better-looking charts
     sns.set(style="whitegrid")
 
     # 1. Monthly spending over time
     plt.figure(figsize=(12, 6))
-    monthly_data = analysis_results['monthly_spending'].reset_index()
-    monthly_data['amount_abs'] = monthly_data['amount'].abs()
-    plt.bar(monthly_data['month'].astype(str), monthly_data['amount_abs'])
-    plt.title('Monthly Spending Over Time')
-    plt.xlabel('Month')
-    plt.ylabel('Amount Spent')
+    monthly_data = analysis_results["monthly_spending"].reset_index()
+    monthly_data["amount_abs"] = monthly_data["amount"].abs()
+    plt.bar(monthly_data["month"].astype(str), monthly_data["amount_abs"])
+    plt.title("Monthly Spending Over Time")
+    plt.xlabel("Month")
+    plt.ylabel("Amount Spent")
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.savefig('finance_charts/monthly_spending.png')
+    plt.savefig("finance_charts/monthly_spending.png")
 
     # 2. Spending by category (pie chart)
     plt.figure(figsize=(10, 10))
-    category_data = analysis_results['category_spending'].abs()
-    plt.pie(category_data, labels=category_data.index, autopct='%1.1f%%', startangle=90)
-    plt.axis('equal')
-    plt.title('Spending by Category')
+    category_data = analysis_results["category_spending"].abs()
+    plt.pie(category_data, labels=category_data.index, autopct="%1.1f%%", startangle=90)
+    plt.axis("equal")
+    plt.title("Spending by Category")
     plt.tight_layout()
-    plt.savefig('finance_charts/category_spending_pie.png')
+    plt.savefig("finance_charts/category_spending_pie.png")
 
     # 3. Top 10 merchants by spending
     plt.figure(figsize=(12, 6))
-    top_merchants = analysis_results['merchant_spending'].head(10).abs().sort_values(ascending=True)
+    top_merchants = (
+        analysis_results["merchant_spending"].head(10).abs().sort_values(ascending=True)
+    )
     plt.barh(top_merchants.index, top_merchants)
-    plt.title('Top 10 Merchants by Spending')
-    plt.xlabel('Amount Spent')
+    plt.title("Top 10 Merchants by Spending")
+    plt.xlabel("Amount Spent")
     plt.tight_layout()
-    plt.savefig('finance_charts/top_merchants.png')
+    plt.savefig("finance_charts/top_merchants.png")
 
     # 4. Daily spending pattern
     plt.figure(figsize=(12, 6))
-    df['day_of_week'] = df['purchase_date'].dt.day_name()
-    day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-    daily_spending = df[df['amount'] < 0].groupby('day_of_week')['amount'].sum().abs()
+    df["day_of_week"] = df["purchase_date"].dt.day_name()
+    day_order = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+    ]
+    daily_spending = df[df["amount"] < 0].groupby("day_of_week")["amount"].sum().abs()
     daily_spending = daily_spending.reindex(day_order)
     plt.bar(daily_spending.index, daily_spending)
-    plt.title('Spending by Day of Week')
-    plt.ylabel('Amount Spent')
+    plt.title("Spending by Day of Week")
+    plt.ylabel("Amount Spent")
     plt.tight_layout()
-    plt.savefig('finance_charts/daily_spending.png')
+    plt.savefig("finance_charts/daily_spending.png")
 
     subscriptions = analysis_results_2["subs"]
 
     # 5. Subscriptions
     plt.figure(figsize=(12, 8))
-    bars = plt.barh([sub['merchant'] for sub in subscriptions], 
-             [sub['amount'] for sub in subscriptions])
+    bars = plt.barh(
+        [sub["merchant"] for sub in subscriptions],
+        [sub["amount"] for sub in subscriptions],
+    )
     for bar in bars:
         width = bar.get_width()
-        plt.text(width + (width * 0.02), 
-                 bar.get_y() + bar.get_height()/2, 
-                 f'{width:.2f}', 
-                 va='center')
-    
-    plt.title('Monthly Subscriptions by Amount', fontsize=14)
-    plt.xlabel('Monthly Amount')
+        plt.text(
+            width + (width * 0.02),
+            bar.get_y() + bar.get_height() / 2,
+            f"{width:.2f}",
+            va="center",
+        )
+
+    plt.title("Monthly Subscriptions by Amount", fontsize=14)
+    plt.xlabel("Monthly Amount")
     plt.tight_layout()
-    plt.savefig('finance_charts/monthly_subscriptions.png')
+    plt.savefig("finance_charts/monthly_subscriptions.png")
 
     # 6. Merchants per category
     visualize_top_merchant_per_category(df)
 
     # 7. 1st Merchant per category
     visualize_merchant_spending_treemap(df)
+
+    # 8. Monthly tag ranking
+    visualize_tags(df, tag_df)
 
     print("Charts saved to the 'finance_charts' directory.")
 
@@ -296,6 +363,7 @@ def read_spending():
 
     basic_stats = analyze_transactions(transactions_df)
     return (transactions_df, basic_stats)
+
 
 def detect_monthly_subscriptions(df):
     print("\n--- Monthly subscriptions and recurring payments detection ---")
@@ -345,7 +413,7 @@ def detect_monthly_subscriptions(df):
 
 
 def tag_analysis(df):
-    # these tags were not reliably assigned by GPT
+    # these tags were not reliably assigned by categorization
     ignore_tags = ["medium-spending", "minor-spending", "big-spending"]
 
     expenses = df[df["amount"] < 0].copy()
@@ -423,10 +491,11 @@ def advanced_analysis(df):
 
     return {"subs": subs}
 
+
 if __name__ == "__main__":
     print("Currency: SEK")
     fetch_tags_and_categories()
     df, basic_stats = read_spending()
     stats2 = advanced_analysis(df)
     stats3 = tag_analysis(df)
-    visualize_spending(df, basic_stats, stats2)
+    visualize_spending(df, basic_stats, stats2, stats3)
