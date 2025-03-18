@@ -63,7 +63,11 @@ def load_transactions(filepath):
 
     # Extract amount as numeric value
     df["amount"] = df["transaction_amount"].apply(
-        lambda x: float(x["amount"]) if isinstance(x, dict) and "amount" in x else 0
+        lambda x: float(x["amount"]) if isinstance(x, dict) and "amount" in x else 0.0
+    )
+    # FIX: this is an absolute value, it should be signed
+    df["amount_local"] = df["original_amount"].apply(
+        lambda x: float(x["amount"]) if isinstance(x, dict) and "amount" in x else 0.0
     )
 
     df["category"] = df["category_id"].map(fetched_cat)
@@ -182,7 +186,6 @@ def detect_monthly_subscriptions(df):
     potential_merchants = recurring['merchant_name'].value_counts().index.tolist()
     
     likely_sub = []
-    consistent = [] 
     for merchant in potential_merchants:
         merchant_data = debits_df[debits_df['merchant_name'] == merchant].sort_values('entry_date_time')
         
@@ -200,10 +203,6 @@ def detect_monthly_subscriptions(df):
             # Check if transactions occur in different months
             months = merchant_data['entry_date_time'].dt.to_period('M').nunique()
             
-            # Calculate date span in months
-            date_span = (merchant_data['entry_date_time'].max() - 
-                         merchant_data['entry_date_time'].min()).days / 30.5
-            
             # It's likely a monthly subscription if:
             # 1. Similar day of month (std < 5 days to account for weekends/holidays)
             # 2. Spans at least 2 months
@@ -215,26 +214,15 @@ def detect_monthly_subscriptions(df):
                     "frequency": len(merchant_data),
                     "day": int(days_of_month.median()),
                 })
-            else:
-                consistent.append({
-                    "merchant": merchant,
-                    "amount": round(abs(amount_mean), 2),
-                    "frequency": len(merchant_data),
-                    "day": int(days_of_month.median()),
-                })
 
     print("\n--- Monthly Subscriptions ---")
     for data in likely_sub:
         print(json.dumps(data))
 
-    print("\n--- Recurring ---")
-    for data in consistent:
-        print(json.dumps(data))
-
-    return (likely_sub, consistent)
+    return likely_sub
 
 def advanced_analysis(df):
-    subs, recur = detect_monthly_subscriptions(df)
+    subs = detect_monthly_subscriptions(df)
 
     # 2. Unusual spending detection
     print("\n--- Unusual Spending Patterns ---")
@@ -270,7 +258,7 @@ def advanced_analysis(df):
     monthly_pivot['pct_change'] = monthly_pivot['amount_abs'].pct_change() * 100
     
     print("Month-over-month spending change:")
-    for month, row in monthly_pivot.iterrows():
+    for month, row in monthly_pivot[2:].iterrows():
         if pd.notna(row['pct_change']):
             direction = "increase" if row['pct_change'] > 0 else "decrease"
             print(f"{month}: {abs(row['amount_abs']):.2f} ({row['pct_change']:.1f}% {direction} from previous month)")
@@ -280,4 +268,4 @@ if __name__ == "__main__":
     fetch_tags_and_categories()
     df, basic_stats = read_spending()
     advanced_analysis(df)
-    # visualize_spending(df, basic_stats)
+    visualize_spending(df, basic_stats)
