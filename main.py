@@ -116,7 +116,7 @@ def analyze_transactions(df):
     }
 
 
-def visualize_spending(df, analysis_results):
+def visualize_spending(df, analysis_results, analysis_results_2):
     if not os.path.exists('finance_charts'):
         os.makedirs('finance_charts')
     # Set the style for better-looking charts
@@ -163,6 +163,24 @@ def visualize_spending(df, analysis_results):
     plt.ylabel('Amount Spent')
     plt.tight_layout()
     plt.savefig('finance_charts/daily_spending.png')
+
+    subscriptions = analysis_results_2["subs"]
+
+    # 5. Subscriptions
+    plt.figure(figsize=(12, 8))
+    bars = plt.barh([sub['merchant'] for sub in subscriptions], 
+             [sub['amount'] for sub in subscriptions])
+    for bar in bars:
+        width = bar.get_width()
+        plt.text(width + (width * 0.02), 
+                 bar.get_y() + bar.get_height()/2, 
+                 f'{width:.2f}', 
+                 va='center')
+    
+    plt.title('Monthly Subscriptions by Amount', fontsize=14)
+    plt.xlabel('Monthly Amount')
+    plt.tight_layout()
+    plt.savefig('finance_charts/monthly_subscriptions.png')
 
     print("Charts saved to the 'finance_charts' directory.")
 
@@ -263,9 +281,11 @@ def advanced_analysis(df):
             direction = "increase" if row['pct_change'] > 0 else "decrease"
             print(f"{month}: {abs(row['amount_abs']):.2f} ({row['pct_change']:.1f}% {direction} from previous month)")
 
+    return {"subs": subs}
+
 if __name__ == "__main__":
     print("Currency: SEK")
     fetch_tags_and_categories()
     df, basic_stats = read_spending()
-    advanced_analysis(df)
-    visualize_spending(df, basic_stats)
+    stats2 = advanced_analysis(df)
+    visualize_spending(df, basic_stats, stats2)
