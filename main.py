@@ -252,7 +252,7 @@ def visualize_spending(df, analysis_results, analysis_results_2):
 
     # 4. Daily spending pattern
     plt.figure(figsize=(12, 6))
-    df['day_of_week'] = df['entry_date_time'].dt.day_name()
+    df['day_of_week'] = df['purchase_date'].dt.day_name()
     day_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
     daily_spending = df[df['amount'] < 0].groupby('day_of_week')['amount'].sum().abs()
     daily_spending = daily_spending.reindex(day_order)
