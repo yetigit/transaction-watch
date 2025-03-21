@@ -1,9 +1,9 @@
 # Make sense of your bank account transactions data
 
 This project relies on enriched transaction data, i.e transactions that are accurately categorized and tagged.
-- [See part 1 of this project](https://github.com/yetigit/transaction-enrichment)
-- [See scrapping the data](#scrape-and-categorize-the-data)
+[**About scrapping and categorization (part 1)**](https://github.com/yetigit/transaction-enrichment)
 
+---
 ![chart-digest](https://github.com/user-attachments/assets/8424b92d-158f-4d5b-88ca-4e3c24923562)
 
 --- 
